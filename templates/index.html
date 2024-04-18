@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Share</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+
+<style>
+    /* Add this style block in your HTML file or create a separate CSS file */
+
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .container {
+        max-width: 600px;
+    }
+
+    h1 {
+        color: #007bff;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .custom-file-label::after {
+        content: "Choose File";
+    }
+
+    #chat,
+    #fileList {
+        list-style: none;
+        padding: 0;
+    }
+
+    .list-group-item {
+        background-color: #fff;
+        border: 1px solid rgba(0, 123, 255, 0.125);
+    }
+
+    .input-group {
+        margin-bottom: 1rem;
+    }
+
+    .btn-primary {
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .btn-primary:hover {
+        color: #fff;
+        background-color: #0056b3;
+        border-color: #0056b3;
+    }
+</style>
+
+<body class="container mt-5">
+    <h1 class="text-center mb-4">File Share and Chat</h1>
+
+    <!-- Add a form to input the user's name -->
+    <form id="nameForm" class="form-group">
+        <label for="name">Your Name:</label>
+        <input type="text" class="form-control" id="name" required>
+    </form>
+
+    <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" class="mb-4">
+        <div class="custom-file">
+            <input type="file" class="custom-file-input" name="file" id="fileInput" required>
+            <label class="custom-file-label" for="fileInput">Choose file</label>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Upload</button>
+    </form>
+
+    <ul id="chat" class="list-group mb-4"></ul>
+    <div class="input-group mb-3">
+        <input id="message_input" type="text" class="form-control" placeholder="Type your message" autocomplete="off">
+        <div class="input-group-append">
+            <button class="btn btn-primary" type="button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <span id="userNameDisplay"></span>
+
+    <ul id="fileList" class="list-group"></ul>
+
+    <script>
+    var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+// Use the user's name when sending messages
+var userName = '';
+
+// Get the user's name from the form
+$('#nameForm').submit(function (e) {
+    e.preventDefault();
+    userName = $('#name').val();
+    // Display the user's name
+    $('#userNameDisplay').text('User: ' + userName);
+    // You can choose to emit the username to the server if needed
+    // socket.emit('username', userName);
+    $('#nameForm').hide(); // Hide the name form after submission
+});
+
+socket.on('message', function (msg) {
+    // Extract and display the username from the message
+    var parts = msg.split(':');
+    var senderName = parts[0];
+    var messageContent = parts.slice(1).join(':');
+    appendMessage(senderName + ': ' + messageContent);
+});
+
+socket.on('chat_history', function (history) {
+    for (var i = 0; i < history.length; i++) {
+        appendMessage(history[i]);
+    }
+});
+
+function sendMessage() {
+    var message = document.getElementById('message_input').value;
+    // Include the user's name in the message
+    socket.emit('message', userName + ': ' + message);
+    document.getElementById('message_input').value = '';
+}
+
+function appendMessage(msg) {
+    var ul = document.getElementById('chat');
+    var li = document.createElement('li');
+    li.className = 'list-group-item';
+    li.appendChild(document.createTextNode(msg));
+    ul.appendChild(li);
+}
+
+// Update the file list when a new file is uploaded
+socket.on('file_uploaded', function (data) {
+    $('#fileList').append('<li class="list-group-item"><a href="/download/' + data.filename + '">' + data.filename + '</a></li>');
+});
+    </script>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>
